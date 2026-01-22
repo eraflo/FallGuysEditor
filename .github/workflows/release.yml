@@ -37,9 +37,9 @@ jobs:
 
       - name: Release
         id: semantic
+        uses: cycjimmy/semantic-release-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
 
   build-windows:
     name: Build Windows
