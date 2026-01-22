@@ -1,0 +1,3 @@
+[submodule "Packages/com.eraflo.common"]
+	path = Packages/com.eraflo.common
+	url = https://github.com/eraflo/CommonPackage.git

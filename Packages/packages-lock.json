@@ -1,11 +1,10 @@
 {
   "dependencies": {
     "com.eraflo.common": {
-      "version": "git+https://github.com/eraflo/CommonPackage.git",
+      "version": "file:com.eraflo.common",
       "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "84be719f41734054e7f67b4bb16f2cd0386bc350"
+      "source": "embedded",
+      "dependencies": {}
     },
     "com.unity.burst": {
       "version": "1.8.21",
