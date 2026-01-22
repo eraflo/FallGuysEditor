@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 4778211696441940833}
   - component: {fileID: 202364692}
   - component: {fileID: 942810691211101373}
+  - component: {fileID: 6957418050252569402}
   m_Layer: 0
   m_Name: Left Controller
   m_TagString: Untagged
@@ -327,6 +328,22 @@ MonoBehaviour:
   - groupMember: {fileID: 4343660526480754339}
     overrideGroupMembers:
     - {fileID: 2434299456458490401}
+--- !u!114 &6957418050252569402
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 202364687}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6769795dfb00d7844817f9ad4d3840fd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableFly: {fileID: -8868277749267814518, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  actionBasedControllerManager: {fileID: 4778211696441940833}
+  teleportationProvider: {fileID: 1748222016861356527}
+  dynamicMoveProvider: {fileID: 153982007679157697}
 --- !u!1 &1670256624
 GameObject:
   m_ObjectHideFlags: 0
@@ -339,6 +356,7 @@ GameObject:
   - component: {fileID: 5663893676086941514}
   - component: {fileID: 1670256628}
   - component: {fileID: 6678509202150728127}
+  - component: {fileID: 8152230667870303791}
   m_Layer: 0
   m_Name: Right Controller
   m_TagString: Untagged
@@ -654,6 +672,22 @@ MonoBehaviour:
   - groupMember: {fileID: 2141651114331267770}
     overrideGroupMembers:
     - {fileID: 6045481230268494804}
+--- !u!114 &8152230667870303791
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1670256624}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6769795dfb00d7844817f9ad4d3840fd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableFly: {fileID: 2491601197593804648, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  actionBasedControllerManager: {fileID: 5663893676086941514}
+  teleportationProvider: {fileID: 1748222016861356527}
+  dynamicMoveProvider: {fileID: 153982007679157697}
 --- !u!1 &1680501586
 GameObject:
   m_ObjectHideFlags: 0
@@ -931,7 +965,7 @@ MonoBehaviour:
   m_System: {fileID: 1589979491555116479}
   m_MoveSpeed: 1
   m_EnableStrafe: 1
-  m_EnableFly: 0
+  m_EnableFly: 1
   m_UseGravity: 1
   m_GravityApplicationMode: 0
   m_ForwardSource: {fileID: 1767192434}
@@ -962,8 +996,8 @@ MonoBehaviour:
   m_HeadTransform: {fileID: 1767192434}
   m_LeftControllerTransform: {fileID: 202364688}
   m_RightControllerTransform: {fileID: 1670256625}
-  m_LeftHandMovementDirection: 0
-  m_RightHandMovementDirection: 0
+  m_LeftHandMovementDirection: 1
+  m_RightHandMovementDirection: 1
 --- !u!1 &1470279098769358944
 GameObject:
   m_ObjectHideFlags: 0
