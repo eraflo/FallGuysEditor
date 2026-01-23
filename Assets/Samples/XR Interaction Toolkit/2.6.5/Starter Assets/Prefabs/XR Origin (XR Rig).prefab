@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 4778211696441940833}
   - component: {fileID: 202364692}
   - component: {fileID: 942810691211101373}
-  - component: {fileID: 6957418050252569402}
   m_Layer: 0
   m_Name: Left Controller
   m_TagString: Untagged
@@ -328,22 +327,6 @@ MonoBehaviour:
   - groupMember: {fileID: 4343660526480754339}
     overrideGroupMembers:
     - {fileID: 2434299456458490401}
---- !u!114 &6957418050252569402
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 202364687}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6769795dfb00d7844817f9ad4d3840fd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  enableFly: {fileID: -8868277749267814518, guid: c348712bda248c246b8c49b3db54643f, type: 3}
-  actionBasedControllerManager: {fileID: 4778211696441940833}
-  teleportationProvider: {fileID: 1748222016861356527}
-  dynamicMoveProvider: {fileID: 153982007679157697}
 --- !u!1 &1670256624
 GameObject:
   m_ObjectHideFlags: 0
@@ -1507,6 +1490,10 @@ PrefabInstance:
       propertyPath: m_RayOriginTransform
       value: 
       objectReference: {fileID: 8718302446126152263}
+    - target: {fileID: 2761784063978902503, guid: c1800acf6366418a9b5f610249000331, type: 3}
+      propertyPath: m_RaycastMask.m_Bits
+      value: 2147483745
+      objectReference: {fileID: 0}
     - target: {fileID: 2761784063978902504, guid: c1800acf6366418a9b5f610249000331, type: 3}
       propertyPath: m_Parameters.numCapVertices
       value: 4
@@ -1943,6 +1930,10 @@ PrefabInstance:
       propertyPath: m_RayOriginTransform
       value: 
       objectReference: {fileID: 716906830792148215}
+    - target: {fileID: 2761784063978902503, guid: c1800acf6366418a9b5f610249000331, type: 3}
+      propertyPath: m_RaycastMask.m_Bits
+      value: 2147483745
+      objectReference: {fileID: 0}
     - target: {fileID: 2761784063978902504, guid: c1800acf6366418a9b5f610249000331, type: 3}
       propertyPath: m_Parameters.numCapVertices
       value: 4
