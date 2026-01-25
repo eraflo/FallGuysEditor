@@ -149,5 +149,18 @@ namespace Spatial
             }
             if (foundCell.HasValue) occupiedCells.Remove(foundCell.Value);
         }
+
+        /// <summary>
+        /// Checks if a GameObject is currently registered in any grid cell.
+        /// </summary>
+        public bool IsObjectInGrid(GameObject obj)
+        {
+            if (obj == null) return false;
+            foreach (var val in occupiedCells.Values)
+            {
+                if (val == obj) return true;
+            }
+            return false;
+        }
     }
 }
