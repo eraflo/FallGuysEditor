@@ -4,7 +4,10 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/Prototype Map Florian.unity
+    guid: 03ed3121c080d904885ea5bc4c0cfcf3
   m_configObjects:
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 47b6c55ad644e564ea2c48940c75af56, type: 2}
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: bfab3f39e68d56a4e915721eafdc9d60, type: 2}
