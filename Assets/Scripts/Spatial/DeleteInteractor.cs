@@ -70,50 +70,47 @@ namespace Spatial
             if (grid == null) grid = GridSystem.Instance;
             if (grid == null) return;
 
-            bool isHittingSomethingValid = false;
+            bool isHittingButton = false;
 
-            if (rayInteractor.TryGetCurrent3DRaycastHit(out RaycastHit hit))
+            // 1. PRIORITY: Check for validation button (UI or Physics)
+            // 1.1 Check UI Raycast
+            if (rayInteractor.TryGetCurrentUIRaycastResult(out UnityEngine.EventSystems.RaycastResult uiHit))
             {
-                isHittingSomethingValid = CheckHit(hit.collider.gameObject, hit);
-            }
-
-            // 1.5 NEW: If physics hit failed or wasn't the button, check UI raycast
-            if (!isHittingSomethingValid && rayInteractor.TryGetCurrentUIRaycastResult(out UnityEngine.EventSystems.RaycastResult uiHit))
-            {
-                if (deleteUIInstance != null && deleteUIInstance.GetValidationButton() == uiHit.gameObject)
+                if (IsHitOnValidationButton(uiHit.gameObject))
                 {
-                    if (isCharged && currentTarget != null)
-                    {
-                        // HIGHLIGHT: Show feedback that we are on the button
-                        deleteUIInstance.SetValidationHighlight(true);
-
-                        // Increment dwell time for intentional deletion
-                        confirmationDwellTimer += Time.deltaTime;
-                        float ratio = confirmationDwellTimer / confirmationDwellDuration;
-
-                        // UI SHAKE
-                        deleteUIInstance.SetValidationShake(ratio);
-
-                        // OBJECT SHRINK: Sucking the object into oblivion
-                        currentTarget.transform.localScale = Vector3.Lerp(originalTargetScale, Vector3.zero, ratio);
-
-                        // PROGRESSIVE HAPTICS: Vibrate more as we get closer to deletion
-                        if (controller != null)
-                        {
-                            controller.SendHapticImpulse(Mathf.Lerp(0.2f, 1.0f, ratio), 0.05f);
-                        }
-
-                        if (confirmationDwellTimer >= confirmationDwellDuration)
-                        {
-                            DeleteCurrentTarget();
-                            return;
-                        }
-                    }
-                    isHittingSomethingValid = true;
+                    isHittingButton = true;
                 }
             }
 
-            if (!isHittingSomethingValid)
+            // 1.2 Check Physics Raycast for the button
+            if (!isHittingButton && rayInteractor.TryGetCurrent3DRaycastHit(out RaycastHit hit))
+            {
+                if (IsHitOnValidationButton(hit.collider.gameObject))
+                {
+                    isHittingButton = true;
+                }
+            }
+
+            // 1.3 Process Button Hit
+            if (isHittingButton)
+            {
+                if (isCharged && currentTarget != null)
+                {
+                    ProcessConfirmationDwell();
+                }
+                graceTimer = 0f;
+                return; // Stop here, we found the button
+            }
+
+            // 2. SECONDARY: Check for objects to charge
+            bool isHittingObject = false;
+            if (rayInteractor.TryGetCurrent3DRaycastHit(out RaycastHit objHit))
+            {
+                isHittingObject = CheckForObjectHit(objHit.collider.gameObject, objHit);
+            }
+
+            // 3. CLEANUP: Reset or start grace period
+            if (!isHittingObject)
             {
                 if (isCharged && currentTarget != null)
                 {
@@ -130,36 +127,13 @@ namespace Spatial
             }
             else
             {
-                graceTimer = 0f; // Reset grace if we hit something valid
+                graceTimer = 0f;
             }
         }
 
-        private bool CheckHit(GameObject hitObj, RaycastHit hit)
+        private bool CheckForObjectHit(GameObject hitObj, RaycastHit hit)
         {
-            // 1. Check if we hit the validation button via physics
-            if (deleteUIInstance != null && deleteUIInstance.GetValidationButton() == hitObj)
-            {
-                if (isCharged && currentTarget != null)
-                {
-                    deleteUIInstance.SetValidationHighlight(true);
-                    confirmationDwellTimer += Time.deltaTime;
-                    float ratio = confirmationDwellTimer / confirmationDwellDuration;
-                    deleteUIInstance.SetValidationShake(ratio);
-                    currentTarget.transform.localScale = Vector3.Lerp(originalTargetScale, Vector3.zero, ratio);
-                    if (controller != null) controller.SendHapticImpulse(Mathf.Lerp(0.2f, 1.0f, ratio), 0.05f);
-
-                    if (confirmationDwellTimer >= confirmationDwellDuration)
-                    {
-                        DeleteCurrentTarget();
-                    }
-                }
-                return true;
-            }
-
-            // 2. Check if we hit a potential object to delete
-            confirmationDwellTimer = 0f;
-            if (deleteUIInstance != null) deleteUIInstance.SetValidationShake(0);
-
+            // Only check for objects to charge
             XRGrabInteractable grab = hit.collider.GetComponentInParent<XRGrabInteractable>();
             if (grab != null)
             {
@@ -175,6 +149,7 @@ namespace Spatial
 
         private void HandleCharging(GameObject obj, RaycastHit hit)
         {
+            // If we're charging a different object, reset the interaction
             if (currentTarget != obj)
             {
                 ResetInteraction();
@@ -182,6 +157,7 @@ namespace Spatial
                 originalTargetScale = currentTarget.transform.localScale;
             }
 
+            // If we're not charged, charge the object
             if (!isCharged)
             {
                 currentChargeTime += Time.deltaTime;
@@ -235,15 +211,19 @@ namespace Spatial
 
         private void ResetInteraction()
         {
+            // Reset the target scale if we were charging
             if (currentTarget != null && isCharged)
             {
                 currentTarget.transform.localScale = originalTargetScale;
             }
 
+            // Reset the interaction state
             currentTarget = null;
             currentChargeTime = 0f;
             isCharged = false;
             confirmationDwellTimer = 0f;
+
+            // Reset the UI
             if (deleteUIInstance != null)
             {
                 deleteUIInstance.SetValidationShake(0);
@@ -255,6 +235,38 @@ namespace Spatial
         {
             var interactable = obj.GetComponent<XRGrabInteractable>();
             return interactable != null && interactable.isSelected;
+        }
+
+        private bool IsHitOnValidationButton(GameObject hitObj)
+        {
+            if (deleteUIInstance == null) return false;
+            GameObject button = deleteUIInstance.GetValidationButton();
+            if (button == null) return false;
+
+            // Check if hit object is the button or a child of the button
+            return hitObj == button || hitObj.transform.IsChildOf(button.transform);
+        }
+
+        private void ProcessConfirmationDwell()
+        {
+            if (deleteUIInstance == null || currentTarget == null) return;
+
+            // Highlight the button and start dwell timer
+            deleteUIInstance.SetValidationHighlight(true);
+            confirmationDwellTimer += Time.deltaTime;
+
+            // Update UI shake and object shrink
+            float ratio = Mathf.Clamp01(confirmationDwellTimer / confirmationDwellDuration);
+            deleteUIInstance.SetValidationShake(ratio);
+            currentTarget.transform.localScale = Vector3.Lerp(originalTargetScale, Vector3.zero, ratio);
+
+            // Progressive haptics
+            if (controller != null) controller.SendHapticImpulse(Mathf.Lerp(0.2f, 1.0f, ratio), 0.05f);
+
+            if (confirmationDwellTimer >= confirmationDwellDuration)
+            {
+                DeleteCurrentTarget();
+            }
         }
     }
 }
