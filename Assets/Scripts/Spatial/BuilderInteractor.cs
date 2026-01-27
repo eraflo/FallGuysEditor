@@ -82,6 +82,15 @@ namespace Spatial
         private List<Renderer> grabbedRenderers = new List<Renderer>();
         private XRBaseController leftController;
         private XRBaseController rightController;
+        private BaseObject _cachedGrabbedObject;
+
+        // --- Multi-Placement (Snake) ---
+        private List<Vector3Int> _paintPath = new List<Vector3Int>();
+        private HashSet<Vector3Int> _paintPathUnique = new HashSet<Vector3Int>();
+        private Quaternion _paintRotation;
+        private bool _isPainting;
+        private GameObject _activeGrabbedObj;
+        private XRBaseController _activeController;
 
         #endregion
 
@@ -116,8 +125,20 @@ namespace Spatial
             }
 
             // Standard event-based triggers
-            EnableAction(leftPlaceAction, OnPlace);
-            EnableAction(rightPlaceAction, OnPlace);
+            // Multi-Placement Setup (Started/Canceled)
+            if (leftPlaceAction != null)
+            {
+                leftPlaceAction.action.Enable();
+                leftPlaceAction.action.started += OnPlaceStarted;
+                leftPlaceAction.action.canceled += OnPlaceCanceled;
+            }
+            if (rightPlaceAction != null)
+            {
+                rightPlaceAction.action.Enable();
+                rightPlaceAction.action.started += OnPlaceStarted;
+                rightPlaceAction.action.canceled += OnPlaceCanceled;
+            }
+
             EnableAction(cancelAction, OnCancel);
 
             // XR Listeners for physical grab events
@@ -148,8 +169,19 @@ namespace Spatial
                 toggleAction.action.Disable();
             }
 
-            DisableAction(leftPlaceAction, OnPlace);
-            DisableAction(rightPlaceAction, OnPlace);
+            if (leftPlaceAction != null)
+            {
+                leftPlaceAction.action.started -= OnPlaceStarted;
+                leftPlaceAction.action.canceled -= OnPlaceCanceled;
+                leftPlaceAction.action.Disable();
+            }
+            if (rightPlaceAction != null)
+            {
+                rightPlaceAction.action.started -= OnPlaceStarted;
+                rightPlaceAction.action.canceled -= OnPlaceCanceled;
+                rightPlaceAction.action.Disable();
+            }
+
             DisableAction(cancelAction, OnCancel);
 
             if (leftInteractor != null)
@@ -296,6 +328,8 @@ namespace Spatial
             isInsideGridZone = cubicDist < visRadius;
             if (isSystemEnabled) ToggleGrabbedMeshVisibility(!isInsideGridZone);
 
+            grabbed.TryGetComponent<BaseObject>(out _cachedGrabbedObject);
+            
             if (grabbed.TryGetComponent<Rigidbody>(out Rigidbody rb))
             {
                 rb.isKinematic = false;
@@ -309,13 +343,31 @@ namespace Spatial
 
         private void OnRelease(SelectExitEventArgs args)
         {
+            GameObject releasedObj = args.interactableObject.transform.gameObject;
+
             // Restore visibility immediately in case it was hidden
             ToggleGrabbedMeshVisibility(true);
             grabbedRenderers.Clear();
+            _cachedGrabbedObject = null;
+            
+            SetLocomotionEnabled(true);
+
+            // Restore Standard Physics if it's a valid object
+            if (releasedObj.TryGetComponent<Rigidbody>(out Rigidbody rb))
+            {
+                rb.isKinematic = false;
+                rb.useGravity = true;
+                rb.constraints = RigidbodyConstraints.None;
+                
+                // If it was already on the grid, it had ContinuousSpeculative
+                // Set to Discrete or ContinuousDynamic for standard physics
+                rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
+            }
 
             if (isSystemEnabled)
             {
                 isWaitingForTriggerRelease = true;
+                if (ghostController != null) ghostController.Hide();
             }
         }
 
@@ -346,44 +398,80 @@ namespace Spatial
             }
         }
 
-        private void OnPlace(InputAction.CallbackContext context)
+        private void OnPlaceStarted(InputAction.CallbackContext context)
         {
             if (!isSystemEnabled) return;
+            
+            _activeGrabbedObj = GetGrabbedObject();
+            if (_activeGrabbedObj == null) return;
 
-            bool isLeftAction = leftPlaceAction != null && context.action == leftPlaceAction.action;
-            bool isRightAction = rightPlaceAction != null && context.action == rightPlaceAction.action;
-            bool isLeftHolding = leftInteractor != null && leftInteractor.interactablesSelected.Count > 0;
-            bool isRightHolding = rightInteractor != null && rightInteractor.interactablesSelected.Count > 0;
+            // Determine active hand for haptics
+            bool isLeft = leftPlaceAction != null && context.action == leftPlaceAction.action;
+            _activeController = isLeft ? leftController : rightController;
 
-            if ((isLeftAction && !isLeftHolding) || (isRightAction && !isRightHolding)) return;
+            _isPainting = true;
+            _paintPath.Clear();
+            _paintPathUnique.Clear();
+            _paintRotation = grid.GetQuantizedRotation(currentRotationX, currentRotationY, 0f);
+        }
 
-            GameObject grabbedObj = GetGrabbedObject();
-            if (grabbedObj == null) return;
+        private void OnPlaceCanceled(InputAction.CallbackContext context)
+        {
+            if (!_isPainting || _activeGrabbedObj == null) return;
 
-            Vector3Int cell = grid.WorldToCell(grabbedObj.transform.position);
-            Vector3Int center = gridVisualizer.CurrentCenterCell;
-            int halfRange = gridVisualizer.VisibilityHalfRange;
-
-            if (Mathf.Abs(cell.x - center.x) > halfRange || Mathf.Abs(cell.y - center.y) > halfRange || Mathf.Abs(cell.z - center.z) > halfRange) return;
-
-            Vector3Int snappedCell = grid.WorldToCell(cachedSnapPos);
-            if (!grid.IsCellOccupied(snappedCell, grabbedObj))
+            // Batch Instantiate clones for every cell in the collected path
+            foreach (var cell in _paintPath)
             {
-                Quaternion rotation = grid.GetQuantizedRotation(currentRotationX, currentRotationY, 0f);
-                grabbedObj.transform.SetPositionAndRotation(cachedSnapPos, rotation);
+                if (grid.IsCellOccupied(cell, _activeGrabbedObj)) continue;
 
-                if (grabbedObj.TryGetComponent<Rigidbody>(out Rigidbody rb))
+                Vector3 worldPos = grid.CellToWorld(cell);
+                GameObject newObj = Instantiate(_activeGrabbedObj, worldPos, _paintRotation);
+                newObj.name = _activeGrabbedObj.name;
+
+                // Scale restoration: Use InitialScale from BaseObject if it exists, otherwise use current localScale as fallback
+                if (newObj.TryGetComponent<BaseObject>(out var bo))
+                {
+                    newObj.transform.localScale = bo.InitialScale;
+                    bo.enabled = true;
+                    // Sync visuals and physics after restoring scale
+                    bo.SyncVisualOffset();
+                    bo.SyncPhysicsCollider();
+                }
+
+                if (newObj.TryGetComponent<GridLockable>(out var gl))
+                {
+                    gl.enabled = true;
+                }
+
+                if (newObj.TryGetComponent<Rigidbody>(out Rigidbody rb))
                 {
                     rb.isKinematic = false;
                     rb.useGravity = false;
                     rb.constraints = RigidbodyConstraints.FreezeAll;
+                    rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+                    rb.velocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
                 }
 
-                SetLayerRecursive(grabbedObj.transform, GetLayerFromMask(grabbableLayer));
-                DeselectObject(grabbedObj);
-                grid.OccupyCell(snappedCell, grabbedObj);
-                SendHapticPulse(placementHaptics);
+                SetLayerRecursive(newObj.transform, GetLayerFromMask(grabbableLayer));
+                
+                // FORCE ENABLE: Ensure all visual components are active
+                foreach (var r in newObj.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+
+                grid.OccupyCell(cell, newObj);
             }
+
+            if (_paintPath.Count > 0)
+            {
+                SendHapticPulse(placementHaptics);
+                DeselectObject(_activeGrabbedObj);
+                Destroy(_activeGrabbedObj);
+            }
+
+            _isPainting = false;
+            _paintPath.Clear();
+            _activeGrabbedObj = null;
+            ghostController.Hide();
         }
 
         #endregion
@@ -453,7 +541,21 @@ namespace Spatial
                 if (absY > 0.3f) { currentRotationX -= Mathf.Sign(input.y) * grid.RotationStep; changed = true; }
             }
 
-            if (changed) SendHapticPulse(rotationHaptics);
+            if (changed) SendHapticPulse(rotationHaptics, _activeController);
+        }
+
+        private void SendHapticPulse(HapticSettings settings, XRBaseController controller = null)
+        {
+            if (controller != null)
+            {
+                controller.SendHapticImpulse(settings.amplitude, settings.duration);
+            }
+            else
+            {
+                // Fallback: Pulse both if no specific controller is provided
+                if (rightController != null) rightController.SendHapticImpulse(settings.amplitude, settings.duration);
+                if (leftController != null) leftController.SendHapticImpulse(settings.amplitude, settings.duration);
+            }
         }
 
         private void UpdatePlacementPreview(GameObject target)
@@ -481,18 +583,68 @@ namespace Spatial
 
             if (!isInsideGridZone) return;
 
-            // PERFORMANCE: Use squared magnitude for threshold check
-            if ((targetPos - lastLookPos).sqrMagnitude > 0.0001f)
+            Vector3Int snappedCell = grid.WorldToCell(grid.GetClosestGridPoint(targetPos));
+
+            if (_isPainting)
             {
-                lastLookPos = targetPos;
-                cachedSnapPos = grid.GetClosestGridPoint(targetPos);
+                UpdateSnakePath(snappedCell);
+                
+                List<Vector3> worldPositions = new List<Vector3>();
+                for (int i = 0; i < _paintPath.Count; i++) worldPositions.Add(grid.CellToWorld(_paintPath[i]));
+                
+                ghostController.ShowMultiple(target, worldPositions, _paintRotation);
+                
+                // Check if the current hovered cell is valid (not occupied by ANOTHER object)
+                bool isOccupied = grid.IsCellOccupied(snappedCell, target);
+                ghostController.SetValid(!isOccupied);
+            }
+            else
+            {
+                // PERFORMANCE: Use squared magnitude for threshold check
+                if ((targetPos - lastLookPos).sqrMagnitude > 0.0001f)
+                {
+                    lastLookPos = targetPos;
+                    cachedSnapPos = grid.GetClosestGridPoint(targetPos);
+                }
+
+                Quaternion rotation = grid.GetQuantizedRotation(currentRotationX, currentRotationY, 0f);
+                bool isOccupied = grid.IsCellOccupied(grid.WorldToCell(cachedSnapPos), target);
+
+                ghostController.Show(target, cachedSnapPos, rotation);
+                ghostController.SetValid(!isOccupied);
+            }
+        }
+
+        private void UpdateSnakePath(Vector3Int currentCell)
+        {
+            if (_paintPath.Count == 0)
+            {
+                _paintPath.Add(currentCell);
+                _paintPathUnique.Add(currentCell);
+                SendHapticPulse(new HapticSettings(0.2f, 0.05f), _activeController);
+                return;
             }
 
-            Quaternion rotation = grid.GetQuantizedRotation(currentRotationX, currentRotationY, 0f);
-            bool isOccupied = grid.IsCellOccupied(grid.WorldToCell(cachedSnapPos), target);
+            Vector3Int lastCell = _paintPath[_paintPath.Count - 1];
+            if (currentCell == lastCell) return;
 
-            ghostController.Show(target, cachedSnapPos, rotation);
-            ghostController.SetValid(!isOccupied);
+            // Backtrack
+            if (_paintPath.Count >= 2 && currentCell == _paintPath[_paintPath.Count - 2])
+            {
+                _paintPathUnique.Remove(_paintPath[_paintPath.Count - 1]);
+                _paintPath.RemoveAt(_paintPath.Count - 1);
+                SendHapticPulse(new HapticSettings(0.15f, 0.05f), _activeController);
+                return;
+            }
+
+            // Extend (Manhattan distance == 1)
+            int dist = Mathf.Abs(currentCell.x - lastCell.x) + Mathf.Abs(currentCell.y - lastCell.y) + Mathf.Abs(currentCell.z - lastCell.z);
+            if (dist == 1 && !_paintPathUnique.Contains(currentCell))
+            {
+                _paintPath.Add(currentCell);
+                _paintPathUnique.Add(currentCell);
+                SendHapticPulse(new HapticSettings(0.3f, 0.05f), _activeController);
+            }
         }
 
         #endregion
@@ -530,6 +682,8 @@ namespace Spatial
 
         private GameObject GetGrabbedObject()
         {
+            if (_cachedGrabbedObject != null) return _cachedGrabbedObject.gameObject;
+
             GameObject target = null;
             if (rightInteractor != null && rightInteractor.interactablesSelected.Count > 0)
                 target = rightInteractor.interactablesSelected[0].transform.gameObject;
@@ -552,8 +706,7 @@ namespace Spatial
 
         private void SendHapticPulse(HapticSettings settings)
         {
-            if (rightController != null) rightController.SendHapticImpulse(settings.amplitude, settings.duration);
-            if (leftController != null) leftController.SendHapticImpulse(settings.amplitude, settings.duration);
+            SendHapticPulse(settings, null);
         }
 
         private void EnableAction(InputActionReference action, Action<InputAction.CallbackContext> callback)

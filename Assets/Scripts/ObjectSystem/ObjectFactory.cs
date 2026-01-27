@@ -132,6 +132,7 @@ namespace ObjectSystem
             if (_currentInstance.TryGetComponent<BaseObject>(out _currentBaseObject))
             {
                 _currentBaseObject.enabled = false;
+                _currentBaseObject.InitialScale = _initialScale;
                 // PERSISTENT OWNERSHIP: This factory owns this object forever
                 _ownedObjects.TryAdd(_currentBaseObject, _initialScale);
             }
