@@ -72,6 +72,9 @@ jobs:
           versioning: Custom
           version: ${{ needs.release.outputs.new_release_version }}
 
+      - name: Fix Permissions
+        run: sudo chown -R $USER:$USER build
+
       - name: Zip Build
         run: |
           cd build/StandaloneWindows64
@@ -120,6 +123,9 @@ jobs:
           version: ${{ needs.release.outputs.new_release_version }}
           androidAppBundle: false
           androidExportType: androidPackage
+
+      - name: Fix Permissions
+        run: sudo chown -R $USER:$USER build
 
       - name: Rename APK
         run: |

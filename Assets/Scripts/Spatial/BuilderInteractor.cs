@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Eraflo.Common.ObjectSystem;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
@@ -535,7 +536,11 @@ namespace Spatial
             else if (leftInteractor != null && leftInteractor.interactablesSelected.Count > 0)
                 target = leftInteractor.interactablesSelected[0].transform.gameObject;
 
-            if (target != null && ((1 << target.layer) & ignoreGrabLayers.value) == 0) return target;
+            if (target != null && ((1 << target.layer) & ignoreGrabLayers.value) == 0)
+            {
+                // Restriction: Only interact with objects that have a BaseObject component and it is enabled
+                if (target.TryGetComponent<BaseObject>(out var bo) && bo.enabled) return target;
+            }
             return null;
         }
 
