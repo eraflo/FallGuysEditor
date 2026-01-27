@@ -22,10 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Configure Git for private packages
-        run: |
-          git config --global url."https://${{ secrets.COMMON_PACKAGE_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          submodules: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -52,10 +49,7 @@ jobs:
         with:
           fetch-depth: 0
           lfs: true
-
-      - name: Configure Git for private packages
-        run: |
-          git config --global url."https://${{ secrets.COMMON_PACKAGE_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          submodules: true
 
       - name: Cache Library
         uses: actions/cache@v4
@@ -102,10 +96,7 @@ jobs:
         with:
           fetch-depth: 0
           lfs: true
-
-      - name: Configure Git for private packages
-        run: |
-          git config --global url."https://${{ secrets.COMMON_PACKAGE_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          submodules: true
 
       - name: Cache Library
         uses: actions/cache@v4
