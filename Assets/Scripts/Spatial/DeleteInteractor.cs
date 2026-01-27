@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
+using Eraflo.Common.ObjectSystem;
 
 namespace Spatial
 {
@@ -102,6 +103,13 @@ namespace Spatial
                 return; // Stop here, we found the button
             }
 
+            // 1.4 PRIORITY: If currently targeting something but it's now grabbed, abort deletion
+            if (currentTarget != null && IsObjectGrabbed(currentTarget))
+            {
+                ResetInteraction();
+                return;
+            }
+
             // 2. SECONDARY: Check for objects to charge
             bool isHittingObject = false;
             if (rayInteractor.TryGetCurrent3DRaycastHit(out RaycastHit objHit))
@@ -135,7 +143,8 @@ namespace Spatial
         {
             // Only check for objects to charge
             XRGrabInteractable grab = hit.collider.GetComponentInParent<XRGrabInteractable>();
-            if (grab != null)
+            BaseObject baseObject = hit.collider.GetComponentInParent<BaseObject>();
+            if (grab != null && baseObject != null && baseObject.enabled)
             {
                 GameObject root = grab.gameObject;
                 if (!grid.IsObjectInGrid(root) && !grab.isSelected)

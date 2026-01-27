@@ -47,9 +47,14 @@ namespace Spatial
             ApplyLockState(false); // Initial apply without sound
         }
 
+        private void Start()
+        {
+            // Implementation of Start ensures the component can be toggled in the inspector
+        }
+
         public void SetLockState(bool locked)
         {
-            if (isLocked == locked) return;
+            if (!enabled || isLocked == locked) return;
 
             isLocked = locked;
             ApplyLockState(true);

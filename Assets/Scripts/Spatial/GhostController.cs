@@ -1,4 +1,6 @@
 using UnityEngine;
+using System.Collections.Generic;
+using Eraflo.Common.ObjectSystem;
 
 namespace Spatial
 {
@@ -13,133 +15,162 @@ namespace Spatial
         [SerializeField] private Color validColor = new Color(0, 1, 0, 0.4f);
         [SerializeField] private Color invalidColor = new Color(1, 0, 0, 0.4f);
 
-        private GameObject currentGhost;
+        private class GhostData
+        {
+            public GameObject obj;
+            public Renderer[] renderers;
+            public MaterialPropertyBlock mpb;
+        }
+
+        private List<GhostData> activeGhosts = new List<GhostData>();
+        private List<GhostData> ghostPool = new List<GhostData>();
         private GameObject currentPrefab;
-        private Renderer[] ghostRenderers;
         private bool lastValidState = true;
+        private static readonly int ColorProp = Shader.PropertyToID("_Color");
+        private static readonly int BaseColorProp = Shader.PropertyToID("_BaseColor");
 
         /// <summary>
         /// Shows a ghost version of the specified prefab.
-        /// Reuses the existing ghost if it's the same prefab (Optimization).
         /// </summary>
         public void Show(GameObject prefab, Vector3 position, Quaternion rotation)
         {
-            if (prefab == null) return;
-
-            if (currentGhost == null || currentPrefab != prefab)
-            {
-                CreateGhost(prefab);
-            }
-
-            currentGhost.SetActive(true);
-            UpdatePosition(position, rotation);
+            ShowMultiple(prefab, new List<Vector3> { position }, rotation);
         }
 
-        private void CreateGhost(GameObject prefab)
+        public void ShowMultiple(GameObject prefab, List<Vector3> positions, Quaternion rotation)
         {
-            if (currentGhost != null)
+            if (prefab == null || positions == null || positions.Count == 0)
             {
-                Destroy(currentGhost);
+                Hide();
+                return;
             }
 
-            currentPrefab = prefab;
+            if (currentPrefab != prefab)
+            {
+                ClearAll();
+                currentPrefab = prefab;
+            }
 
-            // Clone the object (works for prefabs and scene objects)
-            currentGhost = Instantiate(prefab, transform);
-            currentGhost.name = "GHOST_" + prefab.name;
+            // Sync number of active ghosts
+            while (activeGhosts.Count > positions.Count)
+            {
+                var data = activeGhosts[activeGhosts.Count - 1];
+                activeGhosts.RemoveAt(activeGhosts.Count - 1);
+                data.obj.SetActive(false);
+                ghostPool.Add(data);
+            }
 
-            // Ensure the ghost is properly positioned relative to the container
-            currentGhost.transform.localPosition = Vector3.zero;
-            currentGhost.transform.localRotation = Quaternion.identity;
+            while (activeGhosts.Count < positions.Count)
+            {
+                activeGhosts.Add(GetOrCreateGhost(prefab));
+            }
 
-            // Disable physics on ghost
-            if (currentGhost.TryGetComponent<Rigidbody>(out Rigidbody rb))
+            // Determine Target Scale from prefab
+            Vector3 targetScale = Vector3.one;
+            if (prefab.TryGetComponent<Eraflo.Common.ObjectSystem.BaseObject>(out var bo))
+            {
+                targetScale = bo.InitialScale;
+            }
+
+            // Update positions, rotations and ENFORCE target scale
+            for (int i = 0; i < positions.Count; i++)
+            {
+                activeGhosts[i].obj.SetActive(true);
+                activeGhosts[i].obj.transform.SetPositionAndRotation(positions[i], rotation);
+                activeGhosts[i].obj.transform.localScale = targetScale;
+            }
+            
+            UpdateColor(lastValidState);
+        }
+
+        private GhostData GetOrCreateGhost(GameObject prefab)
+        {
+            if (ghostPool.Count > 0)
+            {
+                var data = ghostPool[ghostPool.Count - 1];
+                ghostPool.RemoveAt(ghostPool.Count - 1);
+                return data;
+            }
+
+            return CreateGhostData(prefab);
+        }
+
+        private GhostData CreateGhostData(GameObject prefab)
+        {
+            GameObject ghost = Instantiate(prefab, transform);
+            ghost.name = "GHOST_" + prefab.name;
+
+            if (ghost.TryGetComponent<Rigidbody>(out Rigidbody rb))
             {
                 rb.isKinematic = true;
                 rb.useGravity = false;
                 rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
             }
 
-            // Disable all colliders on ghost
-            foreach (var col in currentGhost.GetComponentsInChildren<Collider>())
-            {
-                col.enabled = false;
-            }
-
-            // Disable scripts (optional, depending on components)
-            foreach (var mono in currentGhost.GetComponentsInChildren<MonoBehaviour>())
+            foreach (var col in ghost.GetComponentsInChildren<Collider>()) col.enabled = false;
+            foreach (var mono in ghost.GetComponentsInChildren<MonoBehaviour>())
             {
                 if (mono != this) mono.enabled = false;
             }
 
-            ghostRenderers = currentGhost.GetComponentsInChildren<Renderer>(true);
-            foreach (var r in ghostRenderers) r.enabled = true;
-
-            if (ghostRenderers == null || ghostRenderers.Length == 0)
+            GhostData data = new GhostData
             {
-                Debug.LogWarning($"GhostController: '{prefab.name}' has no Renderers in children! Ghost will be invisible.");
+                obj = ghost,
+                renderers = ghost.GetComponentsInChildren<Renderer>(true),
+                mpb = new MaterialPropertyBlock()
+            };
+
+            foreach (var r in data.renderers)
+            {
+                r.enabled = true; // FORCE ENABLE: Clones might be disabled if source was hidden
+                Material[] materials = new Material[r.sharedMaterials.Length];
+                for (int i = 0; i < materials.Length; i++) materials[i] = ghostMaterial;
+                r.materials = materials;
             }
 
-            ApplyGhostMaterial();
-        }
-
-        private void ApplyGhostMaterial()
-        {
-            foreach (var renderer in ghostRenderers)
-            {
-                Material[] materials = new Material[renderer.sharedMaterials.Length];
-                for (int i = 0; i < materials.Length; i++)
-                {
-                    materials[i] = ghostMaterial;
-                }
-                renderer.materials = materials;
-            }
-            UpdateColor(lastValidState);
-        }
-
-        public void UpdatePosition(Vector3 position, Quaternion rotation)
-        {
-            if (currentGhost != null)
-            {
-                currentGhost.transform.SetPositionAndRotation(position, rotation);
-            }
+            return data;
         }
 
         public void SetValid(bool isValid)
         {
             if (lastValidState == isValid) return;
-
             lastValidState = isValid;
             UpdateColor(isValid);
         }
 
         private void UpdateColor(bool isValid)
         {
-            if (ghostRenderers == null) return;
-
             Color targetColor = isValid ? validColor : invalidColor;
-            foreach (var renderer in ghostRenderers)
+
+            for (int i = 0; i < activeGhosts.Count; i++)
             {
-                foreach (var mat in renderer.materials)
+                var data = activeGhosts[i];
+                data.mpb.SetColor(ColorProp, targetColor);
+                data.mpb.SetColor(BaseColorProp, targetColor);
+
+                for (int j = 0; j < data.renderers.Length; j++)
                 {
-                    if (mat.HasProperty("_Color"))
-                    {
-                        mat.SetColor("_Color", targetColor);
-                    }
-                    else if (mat.HasProperty("_BaseColor")) // URP
-                    {
-                        mat.SetColor("_BaseColor", targetColor);
-                    }
+                    data.renderers[j].SetPropertyBlock(data.mpb);
                 }
             }
         }
 
         public void Hide()
         {
-            if (currentGhost != null)
+            for (int i = 0; i < activeGhosts.Count; i++)
             {
-                currentGhost.SetActive(false);
+                activeGhosts[i].obj.SetActive(false);
+                ghostPool.Add(activeGhosts[i]);
             }
+            activeGhosts.Clear();
+        }
+
+        private void ClearAll()
+        {
+            foreach (var d in activeGhosts) if (d.obj != null) Destroy(d.obj);
+            foreach (var d in ghostPool) if (d.obj != null) Destroy(d.obj);
+            activeGhosts.Clear();
+            ghostPool.Clear();
         }
 
         public GameObject GetCurrentPrefab() => currentPrefab;

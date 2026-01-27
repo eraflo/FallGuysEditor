@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
+using Eraflo.Common.ObjectSystem;
 
 namespace Spatial
 {
@@ -49,6 +50,13 @@ namespace Spatial
             if (rayInteractor.TryGetCurrent3DRaycastHit(out RaycastHit hit))
             {
                 GridLockable lockable = hit.collider.GetComponentInParent<GridLockable>();
+                BaseObject baseObject = hit.collider.GetComponentInParent<BaseObject>();
+
+                // Only allow locking if the object is a trackable object
+                if (baseObject == null)
+                {
+                    return;
+                }
 
                 // Only allow locking if the object is actually placed in the grid
                 if (lockable != null && grid.IsObjectInGrid(lockable.gameObject))
