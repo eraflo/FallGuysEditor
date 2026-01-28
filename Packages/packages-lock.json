@@ -4,7 +4,9 @@
       "version": "file:com.eraflo.common",
       "depth": 0,
       "source": "embedded",
-      "dependencies": {}
+      "dependencies": {
+        "com.unity.xr.interaction.toolkit": "2.6.5"
+      }
     },
     "com.unity.burst": {
       "version": "1.8.21",
