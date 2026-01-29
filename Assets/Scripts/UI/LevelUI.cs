@@ -14,6 +14,7 @@ namespace FallGuys.UI
         [Header("References")]
         [SerializeField] private SaveSystemManager _saveSystem;
         [SerializeField] private LevelDatabase _database;
+        [SerializeField] private Spatial.EditorLevelLoader _editorLevelLoader;
 
         [Header("UI - Save")]
         [SerializeField] private TMP_InputField _levelNameInput;
@@ -95,8 +96,10 @@ namespace FallGuys.UI
                 if (_levelNameInput != null) _levelNameInput.text = _database.CurrentLevel.LevelName;
                 Debug.Log($"[LevelUI] Loaded {filename}");
                 
-                // Note: Actual object spawning (re-creating the scene) 
-                // would be handled by a LevelLoader/Spawner script observing the database.
+                if (_editorLevelLoader != null)
+                {
+                    _editorLevelLoader.ReconstructLevel();
+                }
             }
         }
     }
