@@ -13,7 +13,6 @@ namespace FallGuys.Editor.Spatial
     {
         [Header("References")]
         [SerializeField] private LevelDatabase _database;
-        [SerializeField] private GameObject _baseObjectPrefab;
         [SerializeField] private Transform _objectsContainer;
 
         private void OnEnable()
@@ -44,16 +43,19 @@ namespace FallGuys.Editor.Spatial
             if (_database == null || _database.CurrentLevel == null) return;
 
             _isReconstructing = true;
+            _database.IsLoading = true;
             Debug.Log("[EditorLevelLoader] Reconstructing level...");
 
             // 1. Clear existing objects in container
             ClearScene();
+            _database.Clear(); // Ensure database is clean before re-injection
 
             // 2. Spawn new objects
             foreach (var objData in _database.CurrentLevel.Objects)
             {
                 SpawnEditorObject(objData);
             }
+            _database.IsLoading = false;
             _isReconstructing = false;
         }
 
