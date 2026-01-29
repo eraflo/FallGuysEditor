@@ -84,12 +84,12 @@ namespace FallGuys.Editor.Spatial
             
             if (string.IsNullOrEmpty(logicKey)) return;
 
-            // Use robust discovery: Search for the prefab that is linked to the SO with this LogicKey
-            GameObject prefab = GetPrefabByLogicKey(logicKey);
+            // Use robust discovery from Common ObjectRegistry
+            GameObject prefab = ObjectRegistry.GetPrefab(logicKey);
 
             if (prefab == null)
             {
-                Debug.LogWarning($"[EditorLevelLoader] Prefab for LogicKey '{logicKey}' not found in discovery scan.");
+                Debug.LogWarning($"[EditorLevelLoader] Prefab for LogicKey '{logicKey}' not found in ObjectRegistry.");
                 return;
             }
 
@@ -155,52 +155,5 @@ namespace FallGuys.Editor.Spatial
             return 0;
         }
 
-        private Dictionary<string, GameObject> _prefabCache = new Dictionary<string, GameObject>();
-        private bool _isCacheInitialized = false;
-
-        private void InitializePrefabCache()
-        {
-            if (_isCacheInitialized) return;
-
-            _prefabCache.Clear();
-            
-            // Load ALL GameObjects in Resources to find functional prefabs
-            GameObject[] allPrefabs = Resources.LoadAll<GameObject>("");
-            
-            foreach (var prefab in allPrefabs)
-            {
-                if (prefab == null) continue;
-
-                // Functional prefabs MUST have a BaseObject component
-                if (prefab.TryGetComponent<BaseObject>(out var bo))
-                {
-                    // If it has a Config, use its LogicKey as the primary identifier
-                    if (bo.Config != null && !string.IsNullOrEmpty(bo.Config.LogicKey))
-                    {
-                        if (!_prefabCache.ContainsKey(bo.Config.LogicKey))
-                        {
-                            _prefabCache.Add(bo.Config.LogicKey, prefab);
-                            Debug.Log($"[EditorLevelLoader] Discovered Functional Prefab: '{bo.Config.LogicKey}' -> {prefab.name}");
-                        }
-                    }
-                }
-            }
-
-            _isCacheInitialized = true;
-            Debug.Log($"[EditorLevelLoader] Prefab cache initialized with {_prefabCache.Count} entries.");
-        }
-
-        private GameObject GetPrefabByLogicKey(string logicKey)
-        {
-            if (!_isCacheInitialized) InitializePrefabCache();
-
-            if (_prefabCache.TryGetValue(logicKey, out var prefab))
-            {
-                return prefab;
-            }
-
-            // Fallback: try direct loading as a last resort
-            return Resources.Load<GameObject>(logicKey);
-        }
     }
 }
