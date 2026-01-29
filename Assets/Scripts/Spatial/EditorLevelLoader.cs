@@ -104,13 +104,13 @@ namespace FallGuys.Editor.Spatial
         private GameObject GetCommonPrefab(string logicKey)
         {
             // Try root and categories
-            GameObject prefab = Resources.Load<GameObject>($"CommonPrefabs/{logicKey}");
+            GameObject prefab = Resources.Load<GameObject>($"Prefabs/{logicKey}");
             if (prefab != null) return prefab;
 
             string[] categories = { "Trap", "Platform", "Area" };
             foreach (var category in categories)
             {
-                prefab = Resources.Load<GameObject>($"CommonPrefabs/{category}/{logicKey}");
+                prefab = Resources.Load<GameObject>($"Prefabs/{category}/{logicKey}");
                 if (prefab != null) return prefab;
             }
 
