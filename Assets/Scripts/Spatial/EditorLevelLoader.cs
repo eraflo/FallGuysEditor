@@ -80,29 +80,16 @@ namespace FallGuys.Editor.Spatial
         {
             if (data == null) return;
 
-            // 0. Ensure config is resolved first so we can use its Name
-            if (data.Config == null && !string.IsNullOrEmpty(data.LogicKey))
-            {
-                data.Config = ObjectRegistry.GetConfig(data.LogicKey);
-            }
-            
             string logicKey = data.LogicKey;
-            string prefabSearchName = (data.Config != null && !string.IsNullOrEmpty(data.Config.Name)) ? data.Config.Name : logicKey;
-            
-            Debug.Log($"[EditorLevelLoader] SpawnEditorObject called for '{logicKey}' (SearchName: {prefabSearchName}) at {data.Position.ToVector3()}");
             
             if (string.IsNullOrEmpty(logicKey)) return;
 
-            // 1. Get Prefab: Try the Config.Name first (e.g. StartZone), then logicKey
-            GameObject prefab = GetCommonPrefab(prefabSearchName);
-            if (prefab == null && logicKey != prefabSearchName)
-            {
-                prefab = GetCommonPrefab(logicKey);
-            }
+            // Use robust discovery: Search for the prefab that is linked to the SO with this LogicKey
+            GameObject prefab = GetPrefabByLogicKey(logicKey);
 
             if (prefab == null)
             {
-                Debug.LogWarning($"[EditorLevelLoader] Prefab for '{logicKey}' (and search name '{prefabSearchName}') not found in Resources.");
+                Debug.LogWarning($"[EditorLevelLoader] Prefab for LogicKey '{logicKey}' not found in discovery scan.");
                 return;
             }
 
@@ -110,7 +97,7 @@ namespace FallGuys.Editor.Spatial
             Vector3 pos = data.Position.ToVector3();
             Quaternion rot = data.Rotation.ToQuaternion();
             
-            Debug.Log($"[EditorLevelLoader] Spawning '{logicKey}' (Prefab: {prefab.name}) at {pos}. Root spawn.");
+            Debug.Log($"[EditorLevelLoader] Spawning '{logicKey}' (Prefab: {prefab.name}) at world {pos}");
             
             // Instantiate at root (null parent) to avoid UI conflicts
             GameObject instance = Instantiate(prefab, pos, rot, null);
@@ -168,20 +155,52 @@ namespace FallGuys.Editor.Spatial
             return 0;
         }
 
-        private GameObject GetCommonPrefab(string logicKey)
-        {
-            // Try root and categories
-            GameObject prefab = Resources.Load<GameObject>($"{logicKey}");
-            if (prefab != null) return prefab;
+        private Dictionary<string, GameObject> _prefabCache = new Dictionary<string, GameObject>();
+        private bool _isCacheInitialized = false;
 
-            string[] categories = { "Trap", "Platform", "Area", "Traps", "Platforms" };
-            foreach (var category in categories)
+        private void InitializePrefabCache()
+        {
+            if (_isCacheInitialized) return;
+
+            _prefabCache.Clear();
+            
+            // Load ALL GameObjects in Resources to find functional prefabs
+            GameObject[] allPrefabs = Resources.LoadAll<GameObject>("");
+            
+            foreach (var prefab in allPrefabs)
             {
-                prefab = Resources.Load<GameObject>($"{category}/{logicKey}");
-                if (prefab != null) return prefab;
+                if (prefab == null) continue;
+
+                // Functional prefabs MUST have a BaseObject component
+                if (prefab.TryGetComponent<BaseObject>(out var bo))
+                {
+                    // If it has a Config, use its LogicKey as the primary identifier
+                    if (bo.Config != null && !string.IsNullOrEmpty(bo.Config.LogicKey))
+                    {
+                        if (!_prefabCache.ContainsKey(bo.Config.LogicKey))
+                        {
+                            _prefabCache.Add(bo.Config.LogicKey, prefab);
+                            Debug.Log($"[EditorLevelLoader] Discovered Functional Prefab: '{bo.Config.LogicKey}' -> {prefab.name}");
+                        }
+                    }
+                }
             }
 
-            return null;
+            _isCacheInitialized = true;
+            Debug.Log($"[EditorLevelLoader] Prefab cache initialized with {_prefabCache.Count} entries.");
+        }
+
+        private GameObject GetPrefabByLogicKey(string logicKey)
+        {
+            if (!_isCacheInitialized) InitializePrefabCache();
+
+            if (_prefabCache.TryGetValue(logicKey, out var prefab))
+            {
+                return prefab;
+            }
+
+            // Fallback: try direct loading as a last resort
+            return Resources.Load<GameObject>(logicKey);
         }
     }
 }

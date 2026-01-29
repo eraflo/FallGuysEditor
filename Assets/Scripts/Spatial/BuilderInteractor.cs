@@ -328,9 +328,9 @@ namespace Spatial
             isInsideGridZone = cubicDist < visRadius;
             if (isSystemEnabled) ToggleGrabbedMeshVisibility(!isInsideGridZone);
 
-            if (grabbed.TryGetComponent<BaseObject>(out _cachedGrabbedObject))
+            if (grabbed.TryGetComponent<BaseObject>(out _cachedGrabbedObject) || (grabbed.transform.parent != null && grabbed.GetComponentInParent<BaseObject>() is BaseObject parentBO && (_cachedGrabbedObject = parentBO)))
             {
-                if (grabbed.TryGetComponent<Rigidbody>(out Rigidbody rb))
+                if (_cachedGrabbedObject.TryGetComponent<Rigidbody>(out Rigidbody rb))
                 {
                     rb.isKinematic = false;
                     rb.useGravity = true;
@@ -694,8 +694,11 @@ namespace Spatial
 
             if (target != null && ((1 << target.layer) & ignoreGrabLayers.value) == 0)
             {
-                // Restriction: Only interact with objects that have a BaseObject component and it is enabled
-                if (target.TryGetComponent<BaseObject>(out var bo) && bo.enabled) return target;
+                // Restriction: Only interact with objects that have a BaseObject component
+                if (target.TryGetComponent<BaseObject>(out var bo) || target.GetComponentInParent<BaseObject>() is BaseObject pBo && (bo = pBo))
+                {
+                    return target;
+                }
             }
             return null;
         }
