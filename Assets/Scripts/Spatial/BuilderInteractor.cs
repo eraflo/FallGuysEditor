@@ -435,7 +435,7 @@ namespace Spatial
                     bo.enabled = true;
                     // Sync visuals and physics after restoring scale
                     bo.SyncVisualOffset();
-                    bo.SyncPhysicsCollider();
+                    bo.SyncAllColliders();
                 }
 
                 if (newObj.TryGetComponent<GridLockable>(out var gl))

@@ -3,53 +3,101 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using System;
-using Eraflo.Common;
 using Eraflo.Common.LevelSystem;
 using System.IO;
+using TMPro;
+
 namespace FallGuys.UI
 {
     public class LevelUI : MonoBehaviour
     {   
-        [SerializeField] private Button saveButton;
-        [SerializeField] private SaveSystemManager saveSystem;
-        [SerializeField] private LevelDatabase database;
+        [Header("References")]
+        [SerializeField] private SaveSystemManager _saveSystem;
+        [SerializeField] private LevelDatabase _database;
 
-        private string fullPath;
-        private string relativePath;
+        [Header("UI - Save")]
+        [SerializeField] private TMP_InputField _levelNameInput;
+        [SerializeField] private Button _saveButton;
+        [SerializeField] private TMP_Text _validationText;
 
-        public string StringPath {
-            get => Path.Combine(fullPath, relativePath);
-            set => relativePath = value;
-        }
+        [Header("UI - Load (VR Browser)")]
+        [SerializeField] private RectTransform _fileListContainer;
+        [SerializeField] private GameObject _fileEntryPrefab;
+        [SerializeField] private Button _refreshButton;
 
-        void Awake() {
-            fullPath = Application.persistentDataPath;
-            database.CreateNewLevel();
+        private void Awake() 
+        {
+            if (_database.CurrentLevel == null)
+            {
+                _database.CreateNewLevel();
+            }
 
-            saveButton.onClick.AddListener(Save);
+            _saveButton.onClick.AddListener(Save);
+            _refreshButton.onClick.AddListener(RefreshFileList);
+            
+            RefreshFileList();
         }
 
         public void Save()
         {
-            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmssfff");
-            string filename = $"Save_{timestamp}.json";
-            string folder = "Saves";
-            StringPath = folder;
+            string levelName = _levelNameInput != null ? _levelNameInput.text : "Level_" + DateTime.Now.ToString("yyyyMMdd_HHmm");
+            _database.SetLevelName(levelName);
 
-            string finalPath = Path.Combine(folder, filename);
-
-            if(!Directory.Exists(StringPath))
+            // 1. Validation
+            if (!_database.CurrentLevel.Validate(out string error))
             {
-                Directory.CreateDirectory(StringPath);
-                
+                if (_validationText != null) _validationText.text = error;
+                Debug.LogWarning($"[LevelUI] Validation Failed: {error}");
+                return;
             }
 
-            StringPath = finalPath;
-            Debug.Log(StringPath);
+            if (_validationText != null) _validationText.text = "<color=green>Level Valid! Saving...</color>";
 
-            saveSystem.SaveToFile(StringPath, database.CurrentLevel);
-            
+            // 2. Pre-process (Calculations)
+            _database.CurrentLevel.CalculateCheckpointIndices();
+
+            // 3. Save
+            string filename = levelName + ".json";
+            _saveSystem.SaveToFile(filename, _database.CurrentLevel);
         }
-        
+
+        public void RefreshFileList()
+        {
+            // Clear current list
+            foreach (Transform child in _fileListContainer)
+            {
+                Destroy(child.gameObject);
+            }
+
+            // Get files from SaveSystem
+            var files = _saveSystem.GetAvailableSaveFiles();
+
+            foreach (var file in files)
+            {
+                GameObject entry = Instantiate(_fileEntryPrefab, _fileListContainer);
+                var text = entry.GetComponentInChildren<TMP_Text>();
+                if (text != null) text.text = file;
+
+                var btn = entry.GetComponent<Button>();
+                if (btn != null)
+                {
+                    btn.onClick.AddListener(() => LoadFile(file));
+                }
+            }
+        }
+
+        private void LoadFile(string filename)
+        {
+            string json = _saveSystem.LoadFileContent(filename);
+            if (!string.IsNullOrEmpty(json))
+            {
+                _database.LoadFromJson(json);
+                if (_levelNameInput != null) _levelNameInput.text = _database.CurrentLevel.LevelName;
+                Debug.Log($"[LevelUI] Loaded {filename}");
+                
+                // Note: Actual object spawning (re-creating the scene) 
+                // would be handled by a LevelLoader/Spawner script observing the database.
+            }
+        }
     }
 }
