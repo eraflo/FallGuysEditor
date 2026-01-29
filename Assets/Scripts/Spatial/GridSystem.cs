@@ -162,5 +162,19 @@ namespace Spatial
             }
             return false;
         }
+
+        /// <summary>
+        /// Returns all unique GameObjects currently registered in the grid.
+        /// Useful for building the level save list.
+        /// </summary>
+        public List<GameObject> GetUniqueObjects()
+        {
+            HashSet<GameObject> uniqueObjects = new HashSet<GameObject>();
+            foreach (var obj in occupiedCells.Values)
+            {
+                if (obj != null) uniqueObjects.Add(obj);
+            }
+            return new List<GameObject>(uniqueObjects);
+        }
     }
 }

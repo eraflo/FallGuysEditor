@@ -79,20 +79,21 @@ namespace FallGuys.Editor.Spatial
 
         private void SpawnEditorObject(ObjectData data)
         {
-            if (data.Config == null) return;
+            string logicKey = data.Config != null ? data.Config.LogicKey : data.LogicKey;
+            if (string.IsNullOrEmpty(logicKey)) return;
 
             // 1. Load Common Prefab directly (searching in subfolders)
-            GameObject prefab = GetCommonPrefab(data.Config.LogicKey);
+            GameObject prefab = GetCommonPrefab(logicKey);
             if (prefab == null)
             {
-                Debug.LogWarning($"[EditorLevelLoader] Common prefab '{data.Config.LogicKey}' not found in subfolders.");
+                Debug.LogWarning($"[EditorLevelLoader] Common prefab '{logicKey}' not found in subfolders.");
                 return;
             }
 
             // 2. Instantiate at correct transform
             GameObject instance = Instantiate(prefab, data.Position.ToVector3(), data.Rotation.ToQuaternion(), _objectsContainer);
             instance.transform.localScale = data.Scale.ToVector3();
-            instance.name = $"EditorObj_{data.Config.Name}";
+            instance.name = $"EditorObj_{logicKey}";
 
             // 3. Initialize BaseObject
             if (instance.TryGetComponent<BaseObject>(out var baseObj))

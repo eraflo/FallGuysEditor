@@ -81,8 +81,12 @@ namespace Spatial
             // Pause conflicting interactions
             if (lockInteractor != null) lockInteractor.SetEnabled(false);
 
-            // Position the panel near the object
-            Vector3 panelPosition = target.transform.position + Vector3.up * 0.5f + Camera.main.transform.right * 0.3f;
+            // Position the panel between the object and the camera to avoid clipping
+            Transform cam = Camera.main.transform;
+            Vector3 directionToCam = (cam.position - target.transform.position).normalized;
+            // Spawn 0.5m towards the camera, and slightly up
+            Vector3 panelPosition = target.transform.position + directionToCam * 0.5f + Vector3.up * 0.2f;
+            
             inspectorPanel.Show(target, panelPosition, ghostController);
         }
 

@@ -729,6 +729,17 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 2998347720860881051, guid: affb3bfb6032a3f4cb48151d906f816a, type: 3}
   m_PrefabInstance: {fileID: 2787360881253910217}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &3790447334958600208 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1311935284350097113, guid: affb3bfb6032a3f4cb48151d906f816a, type: 3}
+  m_PrefabInstance: {fileID: 2787360881253910217}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db54cdff8102766478d4daf61b21d940, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &8778784918492129606
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -778,17 +789,9 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1559423310734030261, guid: c626da28f870721418ff7d8545b8106e, type: 3}
-      propertyPath: gridVisualizer
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1559423310734030261, guid: c626da28f870721418ff7d8545b8106e, type: 3}
       propertyPath: leftInteractor
       value: 
       objectReference: {fileID: 9146015503685400394}
-    - target: {fileID: 1559423310734030261, guid: c626da28f870721418ff7d8545b8106e, type: 3}
-      propertyPath: ghostController
-      value: 
-      objectReference: {fileID: 0}
     - target: {fileID: 1559423310734030261, guid: c626da28f870721418ff7d8545b8106e, type: 3}
       propertyPath: rightInteractor
       value: 
@@ -809,6 +812,10 @@ PrefabInstance:
       propertyPath: teleportInteractors.Array.data[1]
       value: 
       objectReference: {fileID: 6694496370488184924}
+    - target: {fileID: 4600151578079223996, guid: c626da28f870721418ff7d8545b8106e, type: 3}
+      propertyPath: playerTransform
+      value: 
+      objectReference: {fileID: 7696548424635294051}
     - target: {fileID: 8557675246532391854, guid: c626da28f870721418ff7d8545b8106e, type: 3}
       propertyPath: m_Name
       value: GridManager
@@ -818,6 +825,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c626da28f870721418ff7d8545b8106e, type: 3}
+--- !u!114 &3036715719230787001 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6048359058214167807, guid: c626da28f870721418ff7d8545b8106e, type: 3}
+  m_PrefabInstance: {fileID: 8778784918492129606}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34de02b7f82a9ae4a84a345f85f56973, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!4 &7837875833736749695 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1518057033343486777, guid: c626da28f870721418ff7d8545b8106e, type: 3}
@@ -879,6 +897,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1720881698731471297, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+      propertyPath: inspectorPanel
+      value: 
+      objectReference: {fileID: 3790447334958600208}
+    - target: {fileID: 1720881698731471297, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+      propertyPath: ghostController
+      value: 
+      objectReference: {fileID: 3036715719230787001}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:

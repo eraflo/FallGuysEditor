@@ -85,11 +85,15 @@ namespace Spatial
 
         private GhostData GetOrCreateGhost(GameObject prefab)
         {
-            if (ghostPool.Count > 0)
+            while (ghostPool.Count > 0)
             {
                 var data = ghostPool[ghostPool.Count - 1];
                 ghostPool.RemoveAt(ghostPool.Count - 1);
-                return data;
+
+                if (data.obj != null)
+                {
+                    return data;
+                }
             }
 
             return CreateGhostData(prefab);
@@ -148,9 +152,14 @@ namespace Spatial
                 data.mpb.SetColor(ColorProp, targetColor);
                 data.mpb.SetColor(BaseColorProp, targetColor);
 
+                if (data.obj == null) continue;
+
                 for (int j = 0; j < data.renderers.Length; j++)
                 {
-                    data.renderers[j].SetPropertyBlock(data.mpb);
+                    if (data.renderers[j] != null)
+                    {
+                        data.renderers[j].SetPropertyBlock(data.mpb);
+                    }
                 }
             }
         }

@@ -170,6 +170,17 @@ MonoBehaviour:
   actionBasedControllerManager: {fileID: 755718596}
   teleportationProvider: {fileID: 1221537838}
   dynamicMoveProvider: {fileID: 162318039}
+--- !u!114 &901419111 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7598187767324858880, guid: 73697141ceecca34c8082558b79dad05, type: 3}
+  m_PrefabInstance: {fileID: 5376528876173190735}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba9fb3db3b02b4947bb3682d5f87e0f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &984289244
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -366,14 +377,6 @@ PrefabInstance:
       propertyPath: ghostControllerPrefab
       value: 
       objectReference: {fileID: 984289245}
-    - target: {fileID: 7813935990854409459, guid: 895f6f3c2d334633b5800312285058d2, type: 3}
-      propertyPath: gridVisualizer
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 7813935990854409459, guid: 895f6f3c2d334633b5800312285058d2, type: 3}
-      propertyPath: ghostController
-      value: 
-      objectReference: {fileID: 0}
     - target: {fileID: 8194311775272722568, guid: 895f6f3c2d334633b5800312285058d2, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -922,6 +925,10 @@ PrefabInstance:
       propertyPath: m_AnchorMin.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4735355654241556433, guid: 73697141ceecca34c8082558b79dad05, type: 3}
+      propertyPath: _editorLevelLoader
+      value: 
+      objectReference: {fileID: 901419111}
     - target: {fileID: 4809464407642984852, guid: 73697141ceecca34c8082558b79dad05, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -1026,7 +1033,8 @@ PrefabInstance:
       propertyPath: m_Name
       value: LevelCanvasObject
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 507925481300458144, guid: 73697141ceecca34c8082558b79dad05, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
