@@ -20,6 +20,8 @@ namespace Spatial
             public GameObject obj;
             public Renderer[] renderers;
             public MaterialPropertyBlock mpb;
+            public BaseObject baseObj;
+            public VisualPreviewDrawer drawer;
         }
 
         private List<GhostData> activeGhosts = new List<GhostData>();
@@ -72,12 +74,46 @@ namespace Spatial
                 targetScale = bo.InitialScale;
             }
 
-            // Update positions, rotations and ENFORCE target scale
+            // Feature: Always show preview on ghosts for better UX during placement
+            bool showPreview = bo != null;
+
+            // Handle local suppression to avoid duplicate visualizations
+            if (bo != null) bo.SuppressLocalPreview = showPreview;
+
             for (int i = 0; i < positions.Count; i++)
             {
-                activeGhosts[i].obj.SetActive(true);
-                activeGhosts[i].obj.transform.SetPositionAndRotation(positions[i], rotation);
-                activeGhosts[i].obj.transform.localScale = targetScale;
+                var data = activeGhosts[i];
+                data.obj.SetActive(true);
+
+                // Sync overrides and config from source to ghost in real-time
+                if (bo != null && data.baseObj != null)
+                {
+                    data.baseObj.Initialize(bo.RuntimeData);
+                }
+
+                // Restore snapping position/rotation (Initialize might have moved it to source transform)
+                data.obj.transform.SetPositionAndRotation(positions[i], rotation);
+                data.obj.transform.localScale = targetScale;
+
+                // Feature: Real-time visualization on ghost
+                if (showPreview && data.baseObj != null && data.baseObj.Config != null)
+                {
+                    if (data.drawer == null)
+                    {
+                        GameObject dGo = new GameObject("GhostPreviewDrawer");
+                        dGo.transform.SetParent(data.obj.transform, false);
+                        data.drawer = dGo.AddComponent<VisualPreviewDrawer>();
+                    }
+                    
+                    data.drawer.gameObject.SetActive(true);
+                    data.drawer.Clear();
+                    data.baseObj.Config.DrawRuntimePreview(data.baseObj, data.drawer);
+                }
+                else if (data.drawer != null && data.drawer.gameObject.activeSelf)
+                {
+                    data.drawer.Clear();
+                    data.drawer.gameObject.SetActive(false);
+                }
             }
             
             UpdateColor(lastValidState);
@@ -85,11 +121,15 @@ namespace Spatial
 
         private GhostData GetOrCreateGhost(GameObject prefab)
         {
-            if (ghostPool.Count > 0)
+            while (ghostPool.Count > 0)
             {
                 var data = ghostPool[ghostPool.Count - 1];
                 ghostPool.RemoveAt(ghostPool.Count - 1);
-                return data;
+
+                if (data.obj != null)
+                {
+                    return data;
+                }
             }
 
             return CreateGhostData(prefab);
@@ -107,15 +147,23 @@ namespace Spatial
                 rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
             }
 
+            // Clean up ANY existing VisualPreviewDrawer that might have been cloned from the active source
+            foreach (var existingDrawer in ghost.GetComponentsInChildren<VisualPreviewDrawer>(true))
+            {
+                Destroy(existingDrawer.gameObject);
+            }
+
             foreach (var col in ghost.GetComponentsInChildren<Collider>()) col.enabled = false;
             foreach (var mono in ghost.GetComponentsInChildren<MonoBehaviour>())
             {
-                if (mono != this) mono.enabled = false;
+                // We keep VisualPreviewDrawer enabled on the ghost so it can draw its own lines
+                if (mono != this && !(mono is VisualPreviewDrawer)) mono.enabled = false;
             }
 
             GhostData data = new GhostData
             {
                 obj = ghost,
+                baseObj = ghost.GetComponent<BaseObject>(),
                 renderers = ghost.GetComponentsInChildren<Renderer>(true),
                 mpb = new MaterialPropertyBlock()
             };
@@ -148,15 +196,25 @@ namespace Spatial
                 data.mpb.SetColor(ColorProp, targetColor);
                 data.mpb.SetColor(BaseColorProp, targetColor);
 
+                if (data.obj == null) continue;
+
                 for (int j = 0; j < data.renderers.Length; j++)
                 {
-                    data.renderers[j].SetPropertyBlock(data.mpb);
+                    if (data.renderers[j] != null)
+                    {
+                        data.renderers[j].SetPropertyBlock(data.mpb);
+                    }
                 }
             }
         }
 
         public void Hide()
         {
+            if (currentPrefab != null && currentPrefab.TryGetComponent<BaseObject>(out var bo))
+            {
+                bo.SuppressLocalPreview = false;
+            }
+
             for (int i = 0; i < activeGhosts.Count; i++)
             {
                 activeGhosts[i].obj.SetActive(false);

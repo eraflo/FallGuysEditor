@@ -44,6 +44,8 @@ namespace Spatial
 
         private void Update()
         {
+            if (!_isEnabled) return;
+
             if (grid == null) grid = GridSystem.Instance;
             if (grid == null) return;
 
@@ -143,6 +145,14 @@ namespace Spatial
             currentTarget = null;
             currentChargeTime = 0f;
             if (gaugeUI != null) gaugeUI.Hide();
+        }
+
+        // --- Inspector Integration ---
+        private bool _isEnabled = true;
+        public void SetEnabled(bool enabled)
+        {
+            _isEnabled = enabled;
+            if (!enabled) ResetCharge();
         }
     }
 }

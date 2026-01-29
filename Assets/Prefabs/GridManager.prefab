@@ -1,0 +1,133 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &8557675246532391854
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1518057033343486777}
+  - component: {fileID: 5537578668363898435}
+  - component: {fileID: 4600151578079223996}
+  - component: {fileID: 6048359058214167807}
+  - component: {fileID: 1559423310734030261}
+  m_Layer: 0
+  m_Name: GridManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1518057033343486777
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8557675246532391854}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5537578668363898435
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8557675246532391854}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7bf1a76fc393f5c419f5368826d0340c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cellSize: 1
+  gridDimensions: {x: 50, y: 10, z: 50}
+  origin: {x: 0, y: 0, z: 0}
+  rotationStep: 15
+--- !u!114 &4600151578079223996
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8557675246532391854}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6dc4f0b144ad7f041970910479cae5e5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  lineMaterial: {fileID: 2100000, guid: 508a5e7aa67f9444aa6a03b59c6cf9d3, type: 2}
+  lineWidth: 0.005
+  lineColor: {r: 0.6603774, g: 0.6603774, b: 0.6603774, a: 0.3}
+  visibilityRadius: 10
+  isVisible: 1
+  playerTransform: {fileID: 0}
+--- !u!114 &6048359058214167807
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8557675246532391854}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34de02b7f82a9ae4a84a345f85f56973, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ghostMaterial: {fileID: 2100000, guid: 95d1ea30ae282fe42a9cbc8892f508ec, type: 2}
+  validColor: {r: 0, g: 0.60753155, b: 1, a: 0.4}
+  invalidColor: {r: 1, g: 0, b: 0, a: 0.4}
+--- !u!114 &1559423310734030261
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8557675246532391854}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f79fb132c5544d143b6fbc21df27e2b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ghostController: {fileID: 6048359058214167807}
+  gridVisualizer: {fileID: 4600151578079223996}
+  leftInteractor: {fileID: 0}
+  rightInteractor: {fileID: 0}
+  locomotionProviders:
+  - {fileID: 0}
+  - {fileID: 0}
+  teleportInteractors:
+  - {fileID: 0}
+  - {fileID: 0}
+  toggleAction: {fileID: -8868277749267814518, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  leftRotateAction: {fileID: -7363382999065477798, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  rightRotateAction: {fileID: -5913262927076077117, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  leftPlaceAction: {fileID: -5982496924579745919, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  rightPlaceAction: {fileID: 83097790271614945, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  cancelAction: {fileID: 187161793506945269, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  gridLayer:
+    serializedVersion: 2
+    m_Bits: 8
+  ignoreGrabLayers:
+    serializedVersion: 2
+    m_Bits: 64
+  grabbableLayer:
+    serializedVersion: 2
+    m_Bits: 1
+  depthSensitivity: 2
+  isSystemEnabled: 1
+  rotationHaptics:
+    amplitude: 0.3
+    duration: 0.1
+  placementHaptics:
+    amplitude: 0.7
+    duration: 0.2
+  rotationRepeatDelay: 0.4
+  rotationRepeatRate: 0.1

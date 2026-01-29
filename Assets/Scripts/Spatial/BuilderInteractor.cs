@@ -328,16 +328,17 @@ namespace Spatial
             isInsideGridZone = cubicDist < visRadius;
             if (isSystemEnabled) ToggleGrabbedMeshVisibility(!isInsideGridZone);
 
-            grabbed.TryGetComponent<BaseObject>(out _cachedGrabbedObject);
-            
-            if (grabbed.TryGetComponent<Rigidbody>(out Rigidbody rb))
+            if (grabbed.TryGetComponent<BaseObject>(out _cachedGrabbedObject) || (grabbed.transform.parent != null && grabbed.GetComponentInParent<BaseObject>() is BaseObject parentBO && (_cachedGrabbedObject = parentBO)))
             {
-                rb.isKinematic = false;
-                rb.useGravity = true;
-                rb.constraints = RigidbodyConstraints.None;
-                rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-                rb.velocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
+                if (_cachedGrabbedObject.TryGetComponent<Rigidbody>(out Rigidbody rb))
+                {
+                    rb.isKinematic = false;
+                    rb.useGravity = true;
+                    rb.constraints = RigidbodyConstraints.None;
+                    rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+                    rb.velocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
             }
         }
 
@@ -353,7 +354,8 @@ namespace Spatial
             SetLocomotionEnabled(true);
 
             // Restore Standard Physics if it's a valid object
-            if (releasedObj.TryGetComponent<Rigidbody>(out Rigidbody rb))
+            // FIX: Only apply to BaseObject (game pieces), ignore UI
+            if (releasedObj.GetComponent<BaseObject>() != null && releasedObj.TryGetComponent<Rigidbody>(out Rigidbody rb))
             {
                 rb.isKinematic = false;
                 rb.useGravity = true;
@@ -435,7 +437,7 @@ namespace Spatial
                     bo.enabled = true;
                     // Sync visuals and physics after restoring scale
                     bo.SyncVisualOffset();
-                    bo.SyncPhysicsCollider();
+                    bo.SyncAllColliders();
                 }
 
                 if (newObj.TryGetComponent<GridLockable>(out var gl))
@@ -692,8 +694,11 @@ namespace Spatial
 
             if (target != null && ((1 << target.layer) & ignoreGrabLayers.value) == 0)
             {
-                // Restriction: Only interact with objects that have a BaseObject component and it is enabled
-                if (target.TryGetComponent<BaseObject>(out var bo) && bo.enabled) return target;
+                // Restriction: Only interact with objects that have a BaseObject component
+                if (target.TryGetComponent<BaseObject>(out var bo) || target.GetComponentInParent<BaseObject>() is BaseObject pBo && (bo = pBo))
+                {
+                    return target;
+                }
             }
             return null;
         }

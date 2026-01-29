@@ -151,6 +151,19 @@ namespace Spatial
         }
 
         /// <summary>
+        /// Destroys all objects registered in the grid and clears the dictionary.
+        /// </summary>
+        public void ClearAndDestroyObjects()
+        {
+            List<GameObject> toDestroy = GetUniqueObjects();
+            foreach (var obj in toDestroy)
+            {
+                if (obj != null) Destroy(obj);
+            }
+            occupiedCells.Clear();
+        }
+
+        /// <summary>
         /// Checks if a GameObject is currently registered in any grid cell.
         /// </summary>
         public bool IsObjectInGrid(GameObject obj)
@@ -161,6 +174,20 @@ namespace Spatial
                 if (val == obj) return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Returns all unique GameObjects currently registered in the grid.
+        /// Useful for building the level save list.
+        /// </summary>
+        public List<GameObject> GetUniqueObjects()
+        {
+            HashSet<GameObject> uniqueObjects = new HashSet<GameObject>();
+            foreach (var obj in occupiedCells.Values)
+            {
+                if (obj != null) uniqueObjects.Add(obj);
+            }
+            return new List<GameObject>(uniqueObjects);
         }
     }
 }
