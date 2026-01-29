@@ -6,6 +6,7 @@ using System;
 using Eraflo.Common.LevelSystem;
 using System.IO;
 using TMPro;
+using FallGuys.Editor.Spatial;
 
 namespace FallGuys.UI
 {
@@ -14,7 +15,7 @@ namespace FallGuys.UI
         [Header("References")]
         [SerializeField] private SaveSystemManager _saveSystem;
         [SerializeField] private LevelDatabase _database;
-        [SerializeField] private Spatial.EditorLevelLoader _editorLevelLoader;
+        [SerializeField] private EditorLevelLoader _editorLevelLoader;
 
         [Header("UI - Save")]
         [SerializeField] private TMP_InputField _levelNameInput;
