@@ -2,6 +2,7 @@ using Eraflo.Common.LevelSystem;
 using Eraflo.Common.ObjectSystem;
 using UnityEngine;
 using System.Collections.Generic;
+using Spatial;
 
 namespace FallGuys.Editor.Spatial
 {
@@ -11,15 +12,16 @@ namespace FallGuys.Editor.Spatial
     /// </summary>
     public class EditorLevelLoader : MonoBehaviour
     {
-        [Header("References")]
         [SerializeField] private LevelDatabase _database;
-        [SerializeField] private Transform _objectsContainer;
+        [SerializeField] private LayerMask _grabbableLayer;
 
         private void OnEnable()
         {
+            ObjectRegistry.Initialize(); // Pre-load all configs
             if (_database != null)
             {
                 _database.OnLevelChanged += HandleLevelChanged;
+                Debug.Log($"[EditorLevelLoader] Registered to Database ID: {_database.GetInstanceID()}");
             }
         }
 
@@ -36,6 +38,8 @@ namespace FallGuys.Editor.Spatial
         private void HandleLevelChanged()
         {
             if (_isReconstructing) return;
+            Debug.Log($"[EditorLevelLoader] Database change detected ({_database.GetInstanceID()}). Reconstructing...");
+            ReconstructLevel();
         }
 
         public void ReconstructLevel()
@@ -46,12 +50,17 @@ namespace FallGuys.Editor.Spatial
             _database.IsLoading = true;
             Debug.Log("[EditorLevelLoader] Reconstructing level...");
 
-            // 1. Clear existing objects in container
-            ClearScene();
-            _database.Clear(); // Ensure database is clean before re-injection
+            // 1. Clear existing objects via GridSystem
+            if (GridSystem.Instance != null)
+            {
+                GridSystem.Instance.ClearAndDestroyObjects();
+            }
 
             // 2. Spawn new objects
-            foreach (var objData in _database.CurrentLevel.Objects)
+            var objects = _database.CurrentLevel.Objects;
+            Debug.Log($"[EditorLevelLoader] Found {objects.Count} objects to spawn in the database.");
+            
+            foreach (var objData in objects)
             {
                 SpawnEditorObject(objData);
             }
@@ -61,57 +70,114 @@ namespace FallGuys.Editor.Spatial
 
         private void ClearScene()
         {
-            if (_objectsContainer == null) _objectsContainer = transform;
-
-            // We need to be careful not to delete the container itself or non-level objects.
-            // Level objects should probably have a specific tag or be children of _objectsContainer.
-            List<GameObject> toDestroy = new List<GameObject>();
-            foreach (Transform child in _objectsContainer)
+            if (GridSystem.Instance != null)
             {
-                toDestroy.Add(child.gameObject);
-            }
-
-            foreach (var obj in toDestroy)
-            {
-                DestroyImmediate(obj);
+                GridSystem.Instance.ClearAndDestroyObjects();
             }
         }
 
         private void SpawnEditorObject(ObjectData data)
         {
-            string logicKey = data.Config != null ? data.Config.LogicKey : data.LogicKey;
+            if (data == null) return;
+
+            // 0. Ensure config is resolved first so we can use its Name
+            if (data.Config == null && !string.IsNullOrEmpty(data.LogicKey))
+            {
+                data.Config = ObjectRegistry.GetConfig(data.LogicKey);
+            }
+            
+            string logicKey = data.LogicKey;
+            string prefabSearchName = (data.Config != null && !string.IsNullOrEmpty(data.Config.Name)) ? data.Config.Name : logicKey;
+            
+            Debug.Log($"[EditorLevelLoader] SpawnEditorObject called for '{logicKey}' (SearchName: {prefabSearchName}) at {data.Position.ToVector3()}");
+            
             if (string.IsNullOrEmpty(logicKey)) return;
 
-            // 1. Load Common Prefab directly (searching in subfolders)
-            GameObject prefab = GetCommonPrefab(logicKey);
+            // 1. Get Prefab: Try the Config.Name first (e.g. StartZone), then logicKey
+            GameObject prefab = GetCommonPrefab(prefabSearchName);
+            if (prefab == null && logicKey != prefabSearchName)
+            {
+                prefab = GetCommonPrefab(logicKey);
+            }
+
             if (prefab == null)
             {
-                Debug.LogWarning($"[EditorLevelLoader] Common prefab '{logicKey}' not found in subfolders.");
+                Debug.LogWarning($"[EditorLevelLoader] Prefab for '{logicKey}' (and search name '{prefabSearchName}') not found in Resources.");
                 return;
             }
 
             // 2. Instantiate at correct transform
-            GameObject instance = Instantiate(prefab, data.Position.ToVector3(), data.Rotation.ToQuaternion(), _objectsContainer);
+            Vector3 pos = data.Position.ToVector3();
+            Quaternion rot = data.Rotation.ToQuaternion();
+            
+            Debug.Log($"[EditorLevelLoader] Spawning '{logicKey}' (Prefab: {prefab.name}) at {pos}. Root spawn.");
+            
+            // Instantiate at root (null parent) to avoid UI conflicts
+            GameObject instance = Instantiate(prefab, pos, rot, null);
             instance.transform.localScale = data.Scale.ToVector3();
             instance.name = $"EditorObj_{logicKey}";
+
+            Debug.Log($"[EditorLevelLoader] Instance '{instance.name}' created at world {instance.transform.position}. Active: {instance.activeSelf}");
 
             // 3. Initialize BaseObject
             if (instance.TryGetComponent<BaseObject>(out var baseObj))
             {
                 baseObj.Initialize(data);
             }
+
+            // 4. Register in GridSystem immediately
+            if (GridSystem.Instance != null)
+            {
+                Vector3Int cell = GridSystem.Instance.WorldToCell(pos);
+                GridSystem.Instance.OccupyCell(cell, instance);
+                Debug.Log($"[EditorLevelLoader] Registered '{logicKey}' in grid cell {cell}");
+            }
+
+            // 5. Apply "Placed" state (Mirror BuilderInteractor logic)
+            // Layer
+            SetLayerRecursive(instance.transform, GetLayerFromMask(_grabbableLayer));
+
+            // Physics (Rigidbody must be frozen but NOT kinematic for ContinuousSpeculative)
+            if (instance.TryGetComponent<Rigidbody>(out Rigidbody rb))
+            {
+                rb.isKinematic = false;
+                rb.useGravity = false;
+                rb.constraints = RigidbodyConstraints.FreezeAll;
+                rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                Debug.Log($"[EditorLevelLoader] Rigidbody for '{instance.name}' frozen and set to Speculative.");
+            }
+
+            // Interaction
+            if (instance.TryGetComponent<GridLockable>(out var gl))
+            {
+                gl.SetLockState(true);
+            }
+        }
+
+        private void SetLayerRecursive(Transform target, int layer)
+        {
+            target.gameObject.layer = layer;
+            foreach (Transform child in target) SetLayerRecursive(child, layer);
+        }
+
+        private int GetLayerFromMask(LayerMask mask)
+        {
+            for (int i = 0; i < 32; i++) { if (((1 << i) & mask.value) != 0) return i; }
+            return 0;
         }
 
         private GameObject GetCommonPrefab(string logicKey)
         {
             // Try root and categories
-            GameObject prefab = Resources.Load<GameObject>($"Prefabs/{logicKey}");
+            GameObject prefab = Resources.Load<GameObject>($"{logicKey}");
             if (prefab != null) return prefab;
 
-            string[] categories = { "Trap", "Platform", "Area" };
+            string[] categories = { "Trap", "Platform", "Area", "Traps", "Platforms" };
             foreach (var category in categories)
             {
-                prefab = Resources.Load<GameObject>($"Prefabs/{category}/{logicKey}");
+                prefab = Resources.Load<GameObject>($"{category}/{logicKey}");
                 if (prefab != null) return prefab;
             }
 

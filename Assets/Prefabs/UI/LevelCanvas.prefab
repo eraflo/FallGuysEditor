@@ -78,7 +78,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _database: {fileID: 11400000, guid: 5f2c3246ad05e364cb3038f503819cae, type: 2}
-  _objectsContainer: {fileID: 7249044657960942713}
+  _grabbableLayer:
+    serializedVersion: 2
+    m_Bits: 1
 --- !u!1 &1187683749621275471
 GameObject:
   m_ObjectHideFlags: 0
@@ -1398,6 +1400,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7249044657960942713}
+  - component: {fileID: 3867610933786077778}
   m_Layer: 5
   m_Name: Content
   m_TagString: Untagged
@@ -1424,6 +1427,32 @@ RectTransform:
   m_AnchoredPosition: {x: -0.0057539777, y: 0.13250703}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
+--- !u!114 &3867610933786077778
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5829701830388647591}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Padding:
+    m_Left: 0
+    m_Right: 0
+    m_Top: 0
+    m_Bottom: 0
+  m_ChildAlignment: 1
+  m_Spacing: 0
+  m_ChildForceExpandWidth: 1
+  m_ChildForceExpandHeight: 1
+  m_ChildControlWidth: 1
+  m_ChildControlHeight: 1
+  m_ChildScaleWidth: 0
+  m_ChildScaleHeight: 0
+  m_ReverseArrangement: 0
 --- !u!1 &6491804734162306384
 GameObject:
   m_ObjectHideFlags: 0
@@ -2061,7 +2090,7 @@ MonoBehaviour:
   _fileEntryPrefab: {fileID: 1646803921938261383, guid: cf21d5c60ffb9d64abb72f43e062969b, type: 3}
   _refreshButton: {fileID: 64010765742518142}
   _keyboardPrefab: {fileID: 146120, guid: c4e389e44d96da64ea974ab237ce1a9a, type: 3}
-  _keyboardDistance: 2
+  _keyboardDistance: 2.5
   _keyboardHeightOffset: -0.2
   _followSpeed: 5
 --- !u!1 &8816688368849158464

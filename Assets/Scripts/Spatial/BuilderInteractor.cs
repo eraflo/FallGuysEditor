@@ -328,16 +328,17 @@ namespace Spatial
             isInsideGridZone = cubicDist < visRadius;
             if (isSystemEnabled) ToggleGrabbedMeshVisibility(!isInsideGridZone);
 
-            grabbed.TryGetComponent<BaseObject>(out _cachedGrabbedObject);
-            
-            if (grabbed.TryGetComponent<Rigidbody>(out Rigidbody rb))
+            if (grabbed.TryGetComponent<BaseObject>(out _cachedGrabbedObject))
             {
-                rb.isKinematic = false;
-                rb.useGravity = true;
-                rb.constraints = RigidbodyConstraints.None;
-                rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-                rb.velocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
+                if (grabbed.TryGetComponent<Rigidbody>(out Rigidbody rb))
+                {
+                    rb.isKinematic = false;
+                    rb.useGravity = true;
+                    rb.constraints = RigidbodyConstraints.None;
+                    rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+                    rb.velocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
             }
         }
 
@@ -353,7 +354,8 @@ namespace Spatial
             SetLocomotionEnabled(true);
 
             // Restore Standard Physics if it's a valid object
-            if (releasedObj.TryGetComponent<Rigidbody>(out Rigidbody rb))
+            // FIX: Only apply to BaseObject (game pieces), ignore UI
+            if (releasedObj.GetComponent<BaseObject>() != null && releasedObj.TryGetComponent<Rigidbody>(out Rigidbody rb))
             {
                 rb.isKinematic = false;
                 rb.useGravity = true;

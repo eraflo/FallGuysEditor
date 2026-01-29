@@ -42,6 +42,8 @@ namespace FallGuys.UI
 
         private void Awake() 
         {
+            ObjectRegistry.Initialize(); // Pre-load all configs
+            Debug.Log($"[LevelUI] Database ID: {(_database != null ? _database.GetInstanceID() : 0)}");
             if (_database.CurrentLevel == null)
             {
                 _database.CreateNewLevel();
@@ -56,6 +58,11 @@ namespace FallGuys.UI
                 // Removed onDeselect to prevent closing when clicking keyboard buttons
                 // _levelNameInput.onDeselect.AddListener((val) => CloseKeyboard());
             }
+        }
+
+        private void Start()
+        {
+            RefreshFileList();
         }
 
         private void Update()
@@ -95,7 +102,19 @@ namespace FallGuys.UI
             // 2. Setup
             if (_keyboardInstance != null)
             {
-                _keyboardInstance.InputField = _levelNameInput;
+                // Note: We do NOT overwrite _keyboardInstance.InputField anymore.
+                // We let the keyboard use its own internal preview, and we sync via events.
+                
+                // Unsubscribe first to avoid duplicates
+                _keyboardInstance.OnTextUpdated -= HandleKeyboardTextUpdated;
+                _keyboardInstance.OnClosed -= HandleKeyboardClosed;
+                _keyboardInstance.OnTextSubmitted -= HandleKeyboardClosed;
+
+                _keyboardInstance.OnTextUpdated += HandleKeyboardTextUpdated;
+                _keyboardInstance.OnClosed += HandleKeyboardClosed;
+                _keyboardInstance.OnTextSubmitted += HandleKeyboardClosed;
+
+                // Initialize with current text
                 _keyboardInstance.PresentKeyboard(_levelNameInput.text);
                 
                 // Snap to position immediately on open so it doesn't fly in from zero
@@ -115,35 +134,64 @@ namespace FallGuys.UI
             }
         }
 
+        private void HandleKeyboardTextUpdated(string text)
+        {
+            if (_levelNameInput != null)
+            {
+                _levelNameInput.text = text;
+            }
+        }
+
+        private void HandleKeyboardClosed(object sender, EventArgs e)
+        {
+             // Optional: Validation logic when closed
+        }
+
         public void Save()
         {
+            if (_database == null) return;
+            
+            _database.IsLoading = true; // START GUARDING: Prevent any reconstruction during the whole save process
+            
             string levelName = _levelNameInput != null && !string.IsNullOrEmpty(_levelNameInput.text) ? _levelNameInput.text : "Level_" + DateTime.Now.ToString("yyyyMMdd_HHmm");
             _database.SetLevelName(levelName);
 
             // 0. Build dynamic object list from Grid
             if (GridSystem.Instance != null)
             {
+                
                 var uniqueObjects = GridSystem.Instance.GetUniqueObjects();
                 _database.CurrentLevel.Objects.Clear();
+                int count = 0;
                 foreach (var go in uniqueObjects)
                 {
                     if (go.TryGetComponent<BaseObject>(out var bo))
                     {
+                        bo.UpdateRuntimeDataTransform(); // SYNC: Capture VERY latest world state
+                        
                         if (bo.RuntimeData != null)
                         {
                             _database.AddObject(bo.RuntimeData);
+                            Debug.Log($"[LevelUI.Save] Saving object '{bo.RuntimeData.LogicKey}' at world pos {bo.transform.position}");
+                            count++;
                         }
                     }
                 }
+                
+                _database.IsLoading = false; 
+                Debug.Log($"[LevelUI] Collected {count} objects from GridSystem for saving.");
             }
 
             // 1. Validation
             if (!_database.CurrentLevel.Validate(out string error))
             {
+                _database.IsLoading = false; // UNBLOCK: Restore notifications on failure
                 if (_validationText != null) _validationText.text = error;
                 Debug.LogWarning($"[LevelUI] Validation Failed: {error}");
                 return;
             }
+
+            _database.IsLoading = false; // UNBLOCK: Capture is done, we can allow refreshes now or at the very end
 
             if (_validationText != null) _validationText.text = "<color=green>Level Valid! Saving...</color>";
 
@@ -153,18 +201,21 @@ namespace FallGuys.UI
             // 3. Save
             string filename = levelName + ".json";
             _saveSystem.SaveToFile(filename, _database.CurrentLevel);
+
+            // 4. Refresh VR browser immediately
+            RefreshFileList();
         }
 
         public void RefreshFileList()
         {
-            // Clear current list
-            foreach (Transform child in _fileListContainer)
-            {
-                Destroy(child.gameObject);
-            }
+            // Clear current list immediately
+            List<GameObject> children = new List<GameObject>();
+            foreach (Transform child in _fileListContainer) children.Add(child.gameObject);
+            foreach (var child in children) DestroyImmediate(child);
 
             // Get files from SaveSystem
             var files = _saveSystem.GetAvailableSaveFiles();
+            Debug.Log($"[LevelUI] Found {files.Count} save files.");
 
             foreach (var file in files)
             {
@@ -178,6 +229,25 @@ namespace FallGuys.UI
                     btn.onClick.AddListener(() => LoadFile(file));
                 }
             }
+
+            // Force layout update for VR UI (container and parent/content)
+            if (_fileListContainer != null)
+            {
+                Canvas.ForceUpdateCanvases();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(_fileListContainer);
+                
+                // Content typically has the ContentSizeFitter
+                if (_fileListContainer.TryGetComponent<RectTransform>(out var rt))
+                {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(rt);
+                }
+                
+                // Parent (Viewport/ScrollRect) might need a poke
+                if (_fileListContainer.parent is RectTransform parentRT)
+                {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(parentRT);
+                }
+            }
         }
 
         private void LoadFile(string filename)
@@ -185,14 +255,11 @@ namespace FallGuys.UI
             string json = _saveSystem.LoadFileContent(filename);
             if (!string.IsNullOrEmpty(json))
             {
+                Debug.Log($"[LevelUI] Starting load for {filename}...");
                 _database.LoadFromJson(json);
-                if (_levelNameInput != null) _levelNameInput.text = _database.CurrentLevel.LevelName;
-                Debug.Log($"[LevelUI] Loaded {filename}");
                 
-                if (_editorLevelLoader != null)
-                {
-                    _editorLevelLoader.ReconstructLevel();
-                }
+                if (_levelNameInput != null) _levelNameInput.text = _database.CurrentLevel.LevelName;
+                Debug.Log($"[LevelUI] Finished loading {filename}. Database now has {_database.CurrentLevel.Objects.Count} objects.");
             }
         }
     }

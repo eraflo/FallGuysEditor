@@ -151,6 +151,19 @@ namespace Spatial
         }
 
         /// <summary>
+        /// Destroys all objects registered in the grid and clears the dictionary.
+        /// </summary>
+        public void ClearAndDestroyObjects()
+        {
+            List<GameObject> toDestroy = GetUniqueObjects();
+            foreach (var obj in toDestroy)
+            {
+                if (obj != null) Destroy(obj);
+            }
+            occupiedCells.Clear();
+        }
+
+        /// <summary>
         /// Checks if a GameObject is currently registered in any grid cell.
         /// </summary>
         public bool IsObjectInGrid(GameObject obj)

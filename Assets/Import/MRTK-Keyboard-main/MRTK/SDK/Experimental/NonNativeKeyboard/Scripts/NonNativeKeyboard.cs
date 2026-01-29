@@ -334,7 +334,7 @@ namespace Microsoft.MixedReality.Toolkit.Experimental.UI
         protected void OnDisable()
         {            
             m_LastKeyboardLayout = LayoutType.Alpha;
-            Clear();
+            // Clear(); // Fixed: Do not clear text when closing!
         }
 
 
